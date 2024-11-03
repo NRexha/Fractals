@@ -1,0 +1,44 @@
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+
+float power = 8.0;
+float scale = 0.005;
+int maxIterations = 100;
+float2 focusPoint; 
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    int width, height;
+    Result.GetDimensions(width, height);
+
+    float2 uv = (float2(id.x / (float) width, id.y / (float) height) * 2.0 - 1.0) - focusPoint;
+
+    float3 pos = float3(uv.x, uv.y, 0.5) / scale;
+    float3 z = pos;
+    int iterations = 0;
+
+    for (int i = 0; i < maxIterations; i++)
+    {
+        float r = length(z);
+        if (r > 2.0)
+            break;
+
+        float theta = acos(z.z / r);
+        float phi = atan2(z.y, z.x);
+        float zr = pow(r, power);
+
+        z = zr * float3(
+            sin(theta * power) * cos(phi * power),
+            sin(theta * power) * sin(phi * power),
+            cos(theta * power)
+        ) + pos;
+
+        iterations++;
+    }
+
+    float intensity = saturate((float) iterations / maxIterations);
+    float4 finalColor = float4(intensity, intensity, intensity, 1.0);
+    Result[id.xy] = finalColor;
+}
